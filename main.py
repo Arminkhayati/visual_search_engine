@@ -2,21 +2,20 @@ from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 from watchdog.observers import Observer
 from vse.model import Load_Yolo_model
-from vse.controller.data_controller import NewImageController
+from vse.controller import NewImageController
 from vse.data_access import crud, entities, schemas
 from vse.data_access.database import SessionLocal, engine
 entities.Base.metadata.create_all(bind=engine)
 from CONFIG import IMAGES_DIR
 from typing import List
+from vse.request_model import SearchRequestModel
+from vse.logic import SearchImageLogic
 
-# Load model
+## Load model
 yolo = Load_Yolo_model()
-# Start new image event handler
-file_handler = NewImageController(IMAGES_DIR, yolo)
-# event_handler = NewImageController(yolo)
-# observer = Observer()
-# observer.schedule(event_handler, IMAGES_DIR, recursive=True)
-# observer.start()
+
+
+app = FastAPI()
 
 # Dependency
 def get_db():
@@ -26,27 +25,25 @@ def get_db():
     finally:
         db.close()
 
-# db = SessionLocal()
-# print(crud.get_image_by_label(db, "person")[0].name)
-
-
-app = FastAPI()
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Welcome to our visual search engine..."}
 
 
-# search by list of keywords and order by most hits of keywords
-@app.get("/search/{name}", response_model=List[schemas.Image])
-async def search(name: str, db: Session = Depends(get_db)):
-    images = crud.get_image_by_label(db, name)
+# search by list of keywords and order images by most hits of keywords
+@app.post("/search/", response_model=List[str])
+async def search(search: SearchRequestModel, db: Session = Depends(get_db)):
+
+    sil = SearchImageLogic(search.phrase)
+    images = sil.process(db)
     return images
-
 
 @app.get("/process")
 async def process():
+    ## Start new image event handler
+    file_handler = NewImageController(IMAGES_DIR, yolo)
     result = file_handler.process_all()
     if result:
         return {"message": "done"}

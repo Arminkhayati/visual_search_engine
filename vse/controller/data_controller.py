@@ -27,6 +27,7 @@ class NewImageController:
             _, file_extension = os.path.splitext(filename)
             new_filename = str(uuid.uuid4()) + file_extension
             new_file_path = os.path.join(PROCESSED_IMAGES_DIR, new_filename)
+            print(new_file_path)
             shutil.move(file_path, new_file_path)
             # write info to database
             db = SessionLocal()
